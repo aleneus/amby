@@ -1,5 +1,4 @@
-#ifndef BUFF_H
-#define BUFF_H
+#pragma once
 
 #include <alsa/asoundlib.h>
 
@@ -11,6 +10,3 @@ typedef struct {
   pthread_cond_t cv;
   int ready;
 } buff_t;
-
-
-#endif /* BUFF_H */

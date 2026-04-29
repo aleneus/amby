@@ -1,5 +1,4 @@
-#ifndef CHANNEL_H
-#define CHANNEL_H
+#pragma once
 
 #include <pthread.h>
 #include <stdatomic.h>
@@ -15,5 +14,3 @@ typedef struct {
 } channel_t;
 
 void channel_init_sine(channel_t *ch, double freq, double amp);
-
-#endif /* CHANNEL_H */

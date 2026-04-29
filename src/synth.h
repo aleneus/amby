@@ -1,5 +1,4 @@
-#ifndef SYNTH_H
-#define SYNTH_H
+#pragma once
 
 #include <alsa/asoundlib.h>
 
@@ -16,5 +15,3 @@ typedef struct synth_t {
 
 void sine_generate_block(synth_t *s, float *out, snd_pcm_uframes_t frames);
 void synth_init_sine(synth_t *s, double freq, double amp, unsigned int sample_rate);
-
-#endif /* SYNTH_H */
