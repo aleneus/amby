@@ -11,6 +11,22 @@
 buff_t shared;
 
 int
+add_sine_channel (mixer_t *mixer, double freq)
+{
+  channel_t *ch = calloc (1, sizeof (channel_t));
+  if (!ch)
+    {
+      fprintf (stderr, "channel allocation failed\n");
+      return -1;
+    }
+
+  channel_init_sine (ch, freq, 0.1);
+  mixer_add_channel (mixer, ch);
+
+  return 0;
+}
+
+int
 main ()
 {
   signal (SIGINT, interrupt);
@@ -30,15 +46,14 @@ main ()
       return 1;
     }
 
-  channel_t *ch = calloc (1, sizeof (channel_t));
-  if (!ch)
-    {
-      fprintf (stderr, "channel allocation failed\n");
-      return 1;
-    }
+  if (add_sine_channel (&mixer, 130.81) != 0)
+    return 1;
 
-  channel_init_sine (ch, 440.0, 0.2);
-  mixer_add_channel (&mixer, ch);
+  if (add_sine_channel (&mixer, 164.81) != 0)
+    return 1;
+
+  if (add_sine_channel (&mixer, 196.00) != 0)
+    return 1;
 
   pthread_t prod_tid, cons_tid;
 
