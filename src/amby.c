@@ -1,9 +1,11 @@
+#include <stdbool.h>
 #include <signal.h>
 
-#include "synth.h"
-#include "channel.h"
-#include "mixer.h"
 #include "buff.h"
+#include "channel.h"
+#include "conf.h"
+#include "mixer.h"
+#include "synth.h"
 #include "threads.h"
 
 buff_t shared;
@@ -14,18 +16,11 @@ main()
   signal(SIGINT, interrupt);
   signal(SIGTERM, interrupt);
 
-  shared.frames = FRAMES_PER_PERIOD;
-
-  shared.buf = malloc(sizeof(float) * shared.frames * CHANNELS_OUT);
-  if (!shared.buf)
+  if (buff_init(&shared, FRAMES_PER_PERIOD) != 0)
     {
-      perror("malloc");
+      perror("buff_init failed");
       return 1;
     }
-
-  pthread_mutex_init(&shared.m, NULL);
-  pthread_cond_init(&shared.cv, NULL);
-  shared.ready = 0;
 
   mixer_t mixer;
 
@@ -66,10 +61,7 @@ main()
   pthread_join(cons_tid, NULL);
 
   mixer_free(&mixer);
-  pthread_mutex_destroy(&shared.m);
-  pthread_cond_destroy(&shared.cv);
-
-  free(shared.buf);
+  buff_destroy(&shared);
 
   return 0;
 }

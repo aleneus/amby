@@ -1,5 +1,8 @@
+#include <stdbool.h>
+
 #include "mixer.h"
 #include "threads.h"
+#include "conf.h"
 
 void
 interrupt(int signo)
@@ -17,21 +20,16 @@ producer_thread(void *arg)
 
   while (keep_running)
     {
-      pthread_mutex_lock(&shared.m);
-      while (shared.ready && keep_running)
-        pthread_cond_wait(&shared.cv, &shared.m);
+      buff_lock_for_write(&shared);
 
       if (!keep_running)
         {
-          pthread_mutex_unlock(&shared.m);
+          buff_unlock(&shared);
           break;
         }
 
-      mixer_render_block(mx, shared.buf, shared.frames);
-
-      shared.ready = 1;
-      pthread_cond_signal(&shared.cv);
-      pthread_mutex_unlock(&shared.m);
+      buff_fill_from_mixer(&shared, mx);
+      buff_commit_write(&shared);
     }
 
   return NULL;
@@ -103,7 +101,7 @@ consumer_thread(void *arg)
 
   extern buff_t shared;
 
-  short *outbuf = malloc(sizeof(short) * shared.frames * CHANNELS_OUT);
+  short *outbuf = buff_alloc_out_buffer(&shared);
   if (!outbuf)
     {
       fprintf(stderr,"malloc outbuf failed\n");
@@ -114,49 +112,32 @@ consumer_thread(void *arg)
 
   while (keep_running)
     {
-      pthread_mutex_lock(&shared.m);
-
-      while (!shared.ready && keep_running)
-        pthread_cond_wait(&shared.cv, &shared.m);
+      buff_lock_for_read(&shared);
 
       if (!keep_running)
         {
-          pthread_mutex_unlock(&shared.m);
-
+          buff_unlock(&shared);
           break;
         }
 
-    snd_pcm_uframes_t frames = shared.frames;
+      snd_pcm_uframes_t frames = buff_fill_short_array(&shared, outbuf);
 
-    for (snd_pcm_uframes_t i = 0; i < frames * CHANNELS_OUT; ++i)
-      {
-        float v = shared.buf[i];
+      ssize_t wrote = player_write_frames(pcm, outbuf, frames);
+      if (wrote < 0)
+        {
+          fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror((int)wrote));
+          buff_unlock(&shared);
+          break;
+        }
 
-        if (v > 1.0) v = 1.0;
-        if (v < -1.0) v = -1.0;
+      else if ((snd_pcm_uframes_t)wrote < frames)
+        {
+          short *ptr = outbuf + wrote * CHANNELS_OUT;
+          player_write_frames(pcm, ptr, frames - wrote);
+        }
 
-        outbuf[i] = (short)lrintf(v * 32767.0);
-      }
-
-    ssize_t wrote = player_write_frames(pcm, outbuf, frames);
-    if (wrote < 0)
-      {
-        fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror((int)wrote));
-        pthread_mutex_unlock(&shared.m);
-
-        break;
-      }
-
-    else if ((snd_pcm_uframes_t)wrote < frames)
-      {
-        short *ptr = outbuf + wrote * CHANNELS_OUT;
-        player_write_frames(pcm, ptr, frames - wrote);
-      }
-
-    shared.ready = 0;
-    pthread_cond_signal(&shared.cv);
-    pthread_mutex_unlock(&shared.m);
-  }
+      buff_commit_read(&shared);
+    }
 
   free(outbuf);
   snd_pcm_drain(pcm);

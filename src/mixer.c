@@ -1,4 +1,5 @@
 #include "mixer.h"
+#include "conf.h"
 
 int
 mixer_init(mixer_t *mx, size_t capacity)
@@ -11,10 +12,10 @@ mixer_init(mixer_t *mx, size_t capacity)
   mx->count = 0;
   pthread_mutex_init(&mx->m, NULL);
 
-  mx->mix_buf = malloc(sizeof(float) * FRAMES_PER_PERIOD * CHANNELS_OUT);
+  mx->mix_buf = malloc (sizeof(float) * FRAMES_PER_PERIOD * CHANNELS_OUT);
   if (!mx->mix_buf)
     {
-      free(mx->channels);
+      free (mx->channels);
       return -1;
     }
 
