@@ -1,14 +1,16 @@
-.PHONY: build
+CC = gcc
+CFLAGS = -Wall -Wextra -pthread
+LIBS = -lasound -lm
+BUILD_DIR = build
+TARGET = $(BUILD_DIR)/amby
+
+SRCS = $(wildcard src/*.c)
+
+.PHONY: build todo clean
 
 build:
-	mkdir -p build
-
-	gcc -o build/amby -pthread -lasound -lm \
-		src/amby.c \
-		src/synth.c \
-		src/channel.c \
-		src/mixer.c \
-		src/threads.c
+	mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS) $(LIBS)
 
 todo:
 	@grep "TODO now" -rn src || true

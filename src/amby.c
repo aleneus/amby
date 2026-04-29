@@ -9,7 +9,7 @@
 buff_t shared;
 
 int
-main(int argc, char **argv)
+main()
 {
   signal(SIGINT, interrupt);
   signal(SIGTERM, interrupt);
