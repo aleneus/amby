@@ -1,25 +1,25 @@
-#include <math.h>
 #include <alsa/asoundlib.h>
+#include <math.h>
 
 #include "synth.h"
 
 void
-sine_generate_block(synth_t *s, float *out, snd_pcm_uframes_t frames)
+sine_generate_block (synth_t *s, float *out, snd_pcm_uframes_t frames)
 {
   for (snd_pcm_uframes_t i = 0; i < frames; ++i)
     {
-      float v = (float)(sin(s->phase) * s->amp);
+      float v = (float)(sin (s->phase) * s->amp);
       s->phase += s->phase_inc;
-      if (s->phase > 2.0*M_PI)
-        s->phase -= 2.0*M_PI;
+      if (s->phase > 2.0 * M_PI)
+        s->phase -= 2.0 * M_PI;
 
-      out[2*i] = v;
-      out[2*i+1] = v;
+      out[2 * i] = v;
+      out[2 * i + 1] = v;
     }
 }
 
 void
-synth_init_sine(synth_t *s, double freq, double amp, unsigned int sample_rate)
+synth_init_sine (synth_t *s, double freq, double amp, unsigned int sample_rate)
 {
   s->freq = freq;
   s->amp = amp;

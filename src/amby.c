@@ -1,5 +1,5 @@
-#include <stdbool.h>
 #include <signal.h>
+#include <stdbool.h>
 
 #include "buff.h"
 #include "channel.h"
@@ -11,57 +11,57 @@
 buff_t shared;
 
 int
-main()
+main ()
 {
-  signal(SIGINT, interrupt);
-  signal(SIGTERM, interrupt);
+  signal (SIGINT, interrupt);
+  signal (SIGTERM, interrupt);
 
-  if (buff_init(&shared, FRAMES_PER_PERIOD) != 0)
+  if (buff_init (&shared, FRAMES_PER_PERIOD) != 0)
     {
-      perror("buff_init failed");
+      perror ("buff_init failed");
       return 1;
     }
 
   mixer_t mixer;
 
-  if (mixer_init(&mixer, 16) < 0)
+  if (mixer_init (&mixer, 16) < 0)
     {
-      fprintf(stderr,"mixer init failed\n");
+      fprintf (stderr, "mixer init failed\n");
       return 1;
     }
 
-  channel_t *ch = calloc(1, sizeof(channel_t));
+  channel_t *ch = calloc (1, sizeof (channel_t));
   if (!ch)
     {
-      fprintf(stderr,"channel allocation failed\n");
+      fprintf (stderr, "channel allocation failed\n");
       return 1;
     }
 
-  channel_init_sine(ch, 440.0, 0.2);
-  mixer_add_channel(&mixer, ch);
+  channel_init_sine (ch, 440.0, 0.2);
+  mixer_add_channel (&mixer, ch);
 
   pthread_t prod_tid, cons_tid;
 
-  if (pthread_create(&prod_tid, NULL, producer_thread, &mixer) != 0)
+  if (pthread_create (&prod_tid, NULL, producer_thread, &mixer) != 0)
     {
-      perror("pthread_create producer");
+      perror ("pthread_create producer");
       return 1;
     }
 
-  if (pthread_create(&cons_tid, NULL, consumer_thread, NULL) != 0)
+  if (pthread_create (&cons_tid, NULL, consumer_thread, NULL) != 0)
     {
-      perror("pthread_create consumer");
+      perror ("pthread_create consumer");
       keep_running = 0;
-      pthread_join(prod_tid, NULL);
+      pthread_join (prod_tid, NULL);
 
       return 1;
     }
 
-  pthread_join(prod_tid, NULL);
-  pthread_join(cons_tid, NULL);
+  pthread_join (prod_tid, NULL);
+  pthread_join (cons_tid, NULL);
 
-  mixer_free(&mixer);
-  buff_destroy(&shared);
+  mixer_free (&mixer);
+  buff_destroy (&shared);
 
   return 0;
 }

@@ -1,47 +1,48 @@
 #include <stdbool.h>
 
+#include "conf.h"
 #include "mixer.h"
 #include "threads.h"
-#include "conf.h"
 
 void
-interrupt(int signo)
+interrupt (int signo)
 {
   (void)signo;
   keep_running = 0;
 }
 
 void *
-producer_thread(void *arg)
+producer_thread (void *arg)
 {
-  mixer_t *mx = (mixer_t*)arg;
+  mixer_t *mx = (mixer_t *)arg;
 
   extern buff_t shared;
 
   while (keep_running)
     {
-      buff_lock_for_write(&shared);
+      buff_lock_for_write (&shared);
 
       if (!keep_running)
         {
-          buff_unlock(&shared);
+          buff_unlock (&shared);
           break;
         }
 
-      buff_fill_from_mixer(&shared, mx);
-      buff_commit_write(&shared);
+      buff_fill_from_mixer (&shared, mx);
+      buff_commit_write (&shared);
     }
 
   return NULL;
 }
 
 ssize_t
-player_write_frames(snd_pcm_t *pcm, const short *buf, snd_pcm_uframes_t frames)
+player_write_frames (snd_pcm_t *pcm, const short *buf,
+                     snd_pcm_uframes_t frames)
 {
-  snd_pcm_sframes_t r = snd_pcm_writei(pcm, buf, frames);
+  snd_pcm_sframes_t r = snd_pcm_writei (pcm, buf, frames);
 
   if (r < 0)
-    r = snd_pcm_recover(pcm, r, 0);
+    r = snd_pcm_recover (pcm, r, 0);
 
   if (r < 0)
     return (ssize_t)r;
@@ -50,7 +51,7 @@ player_write_frames(snd_pcm_t *pcm, const short *buf, snd_pcm_uframes_t frames)
 }
 
 void *
-consumer_thread(void *arg)
+consumer_thread (void *arg)
 {
   (void)arg;
 
@@ -58,42 +59,42 @@ consumer_thread(void *arg)
   snd_pcm_t *pcm;
   snd_pcm_hw_params_t *hw;
 
-  if ((err = snd_pcm_open(&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0)
+  if ((err = snd_pcm_open (&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0)
     {
-      fprintf(stderr, "snd_pcm_open error: %s\n", snd_strerror(err));
+      fprintf (stderr, "snd_pcm_open error: %s\n", snd_strerror (err));
       keep_running = 0;
 
       return NULL;
     }
 
-  snd_pcm_hw_params_malloc(&hw);
-  snd_pcm_hw_params_any(pcm, hw);
-  snd_pcm_hw_params_set_access(pcm, hw, SND_PCM_ACCESS_RW_INTERLEAVED);
-  snd_pcm_hw_params_set_format(pcm, hw, FORMAT);
-  snd_pcm_hw_params_set_channels(pcm, hw, CHANNELS_OUT);
+  snd_pcm_hw_params_malloc (&hw);
+  snd_pcm_hw_params_any (pcm, hw);
+  snd_pcm_hw_params_set_access (pcm, hw, SND_PCM_ACCESS_RW_INTERLEAVED);
+  snd_pcm_hw_params_set_format (pcm, hw, FORMAT);
+  snd_pcm_hw_params_set_channels (pcm, hw, CHANNELS_OUT);
   unsigned int rate = SAMPLE_RATE;
-  snd_pcm_hw_params_set_rate_near(pcm, hw, &rate, 0);
+  snd_pcm_hw_params_set_rate_near (pcm, hw, &rate, 0);
   snd_pcm_uframes_t period_size = FRAMES_PER_PERIOD;
-  snd_pcm_hw_params_set_period_size_near(pcm, hw, &period_size, 0);
+  snd_pcm_hw_params_set_period_size_near (pcm, hw, &period_size, 0);
   snd_pcm_uframes_t buffer_size = FRAMES_PER_PERIOD * BUFFER_PERIODS;
-  snd_pcm_hw_params_set_buffer_size_near(pcm, hw, &buffer_size);
+  snd_pcm_hw_params_set_buffer_size_near (pcm, hw, &buffer_size);
 
-  if ((err = snd_pcm_hw_params(pcm, hw)) < 0)
+  if ((err = snd_pcm_hw_params (pcm, hw)) < 0)
     {
-      fprintf(stderr, "snd_pcm_hw_params error: %s\n", snd_strerror(err));
-      snd_pcm_close(pcm);
-      snd_pcm_hw_params_free(hw);
+      fprintf (stderr, "snd_pcm_hw_params error: %s\n", snd_strerror (err));
+      snd_pcm_close (pcm);
+      snd_pcm_hw_params_free (hw);
       keep_running = 0;
 
       return NULL;
     }
 
-  snd_pcm_hw_params_free(hw);
+  snd_pcm_hw_params_free (hw);
 
-  if ((err = snd_pcm_prepare(pcm)) < 0)
+  if ((err = snd_pcm_prepare (pcm)) < 0)
     {
-      fprintf(stderr, "snd_pcm_prepare error: %s\n", snd_strerror(err));
-      snd_pcm_close(pcm);
+      fprintf (stderr, "snd_pcm_prepare error: %s\n", snd_strerror (err));
+      snd_pcm_close (pcm);
       keep_running = 0;
 
       return NULL;
@@ -101,47 +102,48 @@ consumer_thread(void *arg)
 
   extern buff_t shared;
 
-  short *outbuf = buff_alloc_out_buffer(&shared);
+  short *outbuf = buff_alloc_out_buffer (&shared);
   if (!outbuf)
     {
-      fprintf(stderr,"malloc outbuf failed\n");
-      snd_pcm_close(pcm);
+      fprintf (stderr, "malloc outbuf failed\n");
+      snd_pcm_close (pcm);
 
       return NULL;
     }
 
   while (keep_running)
     {
-      buff_lock_for_read(&shared);
+      buff_lock_for_read (&shared);
 
       if (!keep_running)
         {
-          buff_unlock(&shared);
+          buff_unlock (&shared);
           break;
         }
 
-      snd_pcm_uframes_t frames = buff_fill_short_array(&shared, outbuf);
+      snd_pcm_uframes_t frames = buff_fill_short_array (&shared, outbuf);
 
-      ssize_t wrote = player_write_frames(pcm, outbuf, frames);
+      ssize_t wrote = player_write_frames (pcm, outbuf, frames);
       if (wrote < 0)
         {
-          fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror((int)wrote));
-          buff_unlock(&shared);
+          fprintf (stderr, "snd_pcm_writei failed: %s\n",
+                   snd_strerror ((int)wrote));
+          buff_unlock (&shared);
           break;
         }
 
       else if ((snd_pcm_uframes_t)wrote < frames)
         {
           short *ptr = outbuf + wrote * CHANNELS_OUT;
-          player_write_frames(pcm, ptr, frames - wrote);
+          player_write_frames (pcm, ptr, frames - wrote);
         }
 
-      buff_commit_read(&shared);
+      buff_commit_read (&shared);
     }
 
-  free(outbuf);
-  snd_pcm_drain(pcm);
-  snd_pcm_close(pcm);
+  free (outbuf);
+  snd_pcm_drain (pcm);
+  snd_pcm_close (pcm);
 
   return NULL;
 }
