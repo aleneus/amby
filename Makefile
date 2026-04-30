@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pthread
-LIBS = -lasound -lm
+LIBS = -lasound -lm -lsensors
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/amby
 

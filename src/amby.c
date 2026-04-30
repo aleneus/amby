@@ -20,7 +20,7 @@ add_sine_channel (mixer_t *mixer, double freq)
       return -1;
     }
 
-  channel_init_sine (ch, freq, 0.1);
+  channel_init_sine (ch, freq, 1);
   mixer_add_channel (mixer, ch);
 
   return 0;
@@ -55,7 +55,9 @@ main ()
   if (add_sine_channel (&mixer, 196.00) != 0)
     return 1;
 
-  pthread_t prod_tid, cons_tid;
+  pthread_t prod_tid;
+  pthread_t cons_tid;
+  pthread_t ctrl_tid;
 
   if (pthread_create (&prod_tid, NULL, producer_thread, &mixer) != 0)
     {
@@ -72,8 +74,18 @@ main ()
       return 1;
     }
 
+  if (pthread_create (&ctrl_tid, NULL, volume_controller_thread, &mixer) != 0)
+    {
+      perror ("pthread_create volume controller");
+      keep_running = 0;
+      pthread_join (ctrl_tid, NULL);
+
+      return 1;
+    }
+
   pthread_join (prod_tid, NULL);
   pthread_join (cons_tid, NULL);
+  pthread_join (ctrl_tid, NULL);
 
   mixer_free (&mixer);
   buff_destroy (&shared);

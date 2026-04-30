@@ -1,5 +1,7 @@
-#include "mixer.h"
+#include <sensors/sensors.h>
+
 #include "conf.h"
+#include "mixer.h"
 
 int
 mixer_init (mixer_t *mx, size_t capacity)
@@ -18,6 +20,8 @@ mixer_init (mixer_t *mx, size_t capacity)
       free (mx->channels);
       return -1;
     }
+
+  sensors_init (NULL);
 
   return 0;
 }
@@ -58,42 +62,32 @@ mixer_render_block (mixer_t *mx, float *out, snd_pcm_uframes_t frames)
   size_t samples = frames * CHANNELS_OUT;
 
   for (size_t i = 0; i < samples; ++i)
-    out[i] = 0.0;
+    out[i] = 0.0f;
+
+  channel_t *local[MAX_LOCAL_CHANNELS];
+  size_t n = 0;
 
   pthread_mutex_lock (&mx->m);
 
-  size_t n = mx->count;
-  channel_t **local = malloc (sizeof (channel_t *) * n);
-
-  if (local)
-    for (size_t i = 0; i < n; ++i)
-      local[i] = mx->channels[i];
+  n = (mx->count < MAX_LOCAL_CHANNELS) ? mx->count : MAX_LOCAL_CHANNELS;
+  for (size_t i = 0; i < n; ++i)
+    local[i] = mx->channels[i];
 
   pthread_mutex_unlock (&mx->m);
 
-  if (!local)
-    return;
+  for (size_t i = 0; i < n; ++i)
+    channel_render_add (local[i], out, frames);
+}
 
-  float *temp = malloc (sizeof (float) * samples);
-  if (!temp)
+void
+mixer_set_gain (mixer_t *mx, float gain)
+{
+  pthread_mutex_lock (&mx->m);
+
+  for (size_t i = 0; i < mx->count; ++i)
     {
-      free (local);
-      return;
+      atomic_store (&mx->channels[i]->gain, gain);
     }
 
-  for (size_t ci = 0; ci < n; ++ci)
-    {
-      channel_t *ch = local[ci];
-      if (!atomic_load (&ch->enabled))
-        continue;
-
-      ch->synth.generate_block (&ch->synth, temp, frames);
-      float gain = atomic_load (&ch->gain);
-
-      for (size_t s = 0; s < samples; ++s)
-        out[s] += temp[s] * gain;
-    }
-
-  free (temp);
-  free (local);
+  pthread_mutex_unlock (&mx->m);
 }
