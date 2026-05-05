@@ -15,3 +15,9 @@
    fixed-size stack buffer to avoid dynamic memory allocation in the
    real-time audio thread. */
 #define MAX_LOCAL_CHANNELS 64
+
+/* Preferred PCM sample format. */
+#define FORMAT SND_PCM_FORMAT_S16_LE
+
+/* Number of periods in the hardware buffer. */
+#define BUFFER_PERIODS 4

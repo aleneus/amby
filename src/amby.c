@@ -5,8 +5,13 @@
 #include "channel.h"
 #include "conf.h"
 #include "mixer.h"
+#include "play.h"
+#include "producer.h"
 #include "synth.h"
 #include "threads.h"
+#include "volume.h"
+
+volatile int keep_running = 1;
 
 buff_t shared;
 
